@@ -5,6 +5,7 @@ using Traffic_Violation_Reporting_Management_System.Models;
 
 namespace Traffic_Violation_Reporting_Management_System.Service
 {
+    //can thi chuyen phan interface nay sang 1 file cs rieng nhe
     public interface IEmailService
     {
         Task<bool> SendOtpEmailAsync(string email, string otpCode, string userName);
