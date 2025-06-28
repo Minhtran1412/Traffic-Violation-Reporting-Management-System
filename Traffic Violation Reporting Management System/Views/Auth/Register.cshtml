@@ -196,18 +196,18 @@
         $(document).ready(function() {
             console.log('🚀 Register page loaded successfully');
             
-            // Check if jQuery validation is working
+            
             if (typeof $.fn.valid === 'function') {
                 console.log('✅ jQuery validation loaded');
             } else {
                 console.error('❌ jQuery validation not loaded');
             }
             
-            // Form submission với loading state và debug
+           
             $('#registerForm').on('submit', function(e) {
                 console.log('📝 Form submission started');
                 
-                // Check form validity
+                
                 const isValid = $(this).valid();
                 console.log('🔍 Form validation result:', isValid);
                 
@@ -223,12 +223,12 @@
                 
                 console.log('⏳ Showing loading state');
                 
-                // Disable button và show loading
+                
                 submitBtn.prop('disabled', true);
                 loginText.hide();
                 loadingSpinner.show();
                 
-                // Re-enable nếu có lỗi validation
+                
                 setTimeout(function() {
                     if ($('.text-danger:visible, .alert-danger:visible').length > 0) {
                         console.log('🔄 Re-enabling button due to validation errors');
@@ -239,45 +239,45 @@
                 }, 100);
             });
             
-            // Focus vào fullName input khi trang load
+           
             $('#fullNameInput').focus();
             
-            // Chỉ cho phép nhập số cho CCCD và Phone
+            
             $('#cccdInput, #phoneInput').on('input', function() {
                 this.value = this.value.replace(/[^0-9]/g, '');
             });
             
-            // Real-time validation với debug
+           
             $('#registerForm input').on('blur', function() {
                 const fieldName = $(this).attr('name');
                 const isValid = $(this).valid();
                 console.log(`🔍 Field "${fieldName}" validation:`, isValid);
             });
             
-            // Debug validation errors
+        
             $('#registerForm').on('invalid', function() {
                 console.log('❌ Form has validation errors');
                 const errors = $('#registerForm').validate().errorList;
                 console.log('Validation errors:', errors);
             });
             
-            // Catch any JavaScript errors
+            
             window.addEventListener('error', function(e) {
                 console.error('💥 JavaScript Error:', e.error);
                 console.error('📍 Error location:', e.filename + ':' + e.lineno);
             });
             
-            // Debug all form inputs
+            
             $('#registerForm input').each(function() {
                 const name = $(this).attr('name');
                 const required = $(this).prop('required');
                 console.log(`📋 Field "${name}": required=${required}`);
             });
             
-            // Password strength indicator (optional)
+            
             $('#passwordInput').on('input', function() {
                 const password = $(this).val();
-                // Add password strength logic here if needed
+                
             });
         });
         

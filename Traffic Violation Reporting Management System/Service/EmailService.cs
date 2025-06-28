@@ -127,7 +127,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
         {
             try
             {
-                // Validate email settings
+                
                 if (string.IsNullOrEmpty(_emailSettings.SmtpHost))
                 {
                     _logger.LogError("SMTP Host không được cấu hình");
@@ -137,7 +137,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                 using var smtpClient = new SmtpClient(_emailSettings.SmtpHost, _emailSettings.SmtpPort);
                 smtpClient.EnableSsl = _emailSettings.EnableSsl;
                 smtpClient.UseDefaultCredentials = _emailSettings.UseDefaultCredentials;
-                smtpClient.Timeout = 30000; // 30 seconds timeout
+                smtpClient.Timeout = 30000; 
                 
                 if (!_emailSettings.UseDefaultCredentials)
                 {
@@ -156,14 +156,14 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                 message.Subject = subject;
                 message.IsBodyHtml = true;
 
-                // Tạo multipart message với cả HTML và text
+                
                 var htmlView = AlternateView.CreateAlternateViewFromString(htmlContent, null, "text/html");
                 var textView = AlternateView.CreateAlternateViewFromString(textContent, null, "text/plain");
                 
                 message.AlternateViews.Add(htmlView);
                 message.AlternateViews.Add(textView);
                 
-                // Sử dụng CancellationToken để timeout
+                
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                 await smtpClient.SendMailAsync(message, cts.Token);
                 

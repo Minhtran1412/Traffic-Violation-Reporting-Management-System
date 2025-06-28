@@ -90,40 +90,36 @@ namespace Traffic_Violation_Reporting_Management_System.Service
             
         }
 
-        /// <summary>
-        /// Đăng ký user mới và gửi OTP verification
-        /// </summary>
-        /// <param name="request">Thông tin đăng ký</param>
-        /// <returns>True nếu thành công</returns>
+       
         public async Task<(bool Success, string Message)> RegisterUserAsync(RegisterRequest request)
         {
             try
             {
                 _logger.LogInformation("Bắt đầu đăng ký user với email: {Email}", request.Email);
-                // Kiểm tra email đã tồn tại chưa
+                
                 if (await EmailExistsAsync(request.Email))
                 {
                     return (false, "Email đã được đăng ký trong hệ thống");
                 }
 
-                // Kiểm tra CCCD đã tồn tại chưa
+                
                 if (await CccdExistsAsync(request.Cccd))
                 {
                     return (false, "Số CCCD đã được đăng ký trong hệ thống");
                 }
 
-                // Kiểm tra số điện thoại đã tồn tại chưa
+                
                 if (await PhoneExistsAsync(request.PhoneNumber))
                 {
                     return (false, "Số điện thoại đã được đăng ký trong hệ thống");
                 }
 
-                // Sử dụng database transaction để đảm bảo tạo user và gửi OTP thành công cùng lúc
+                
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 
                 try
                 {
-                    // Tạo user mới (chưa active)
+                    
                     var newUser = new User
                     {
                         FullName = request.FullName.Trim(),
@@ -131,9 +127,9 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                         PhoneNumber = request.PhoneNumber.Trim(),
                         Email = request.Email.Trim().ToLower(),
                         Address = request.Address?.Trim(),
-                        Password = request.Password, // Không hash theo yêu cầu
-                        Role = 2, // Citizen role
-                        IsActive = false, // Chưa active cho đến khi verify OTP
+                        Password = request.Password, 
+                        Role = 2,
+                        IsActive = false, 
                         CreatedAt = DateTime.Now
                     };
 
@@ -141,15 +137,15 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                     await _context.SaveChangesAsync();
                     _logger.LogInformation("User đã được tạo thành công với ID: {UserId}", newUser.UserId);
 
-                    // Tạo OTP trong database
+                    
                     var otpCode = GenerateOtpCode();
                     var otp = new Otp
                     {
-                        Email = request.Email, // Sử dụng email column
-                        PhoneNumber = "", // Để trống vì không dùng
+                        Email = request.Email, 
+                        PhoneNumber = "", 
                         Otpcode = otpCode,
                         CreatedAt = DateTime.Now,
-                        ExpiresAt = DateTime.Now.AddMinutes(10), // Hiệu lực 10 phút
+                        ExpiresAt = DateTime.Now.AddMinutes(10), 
                         IsUsed = false
                     };
 
@@ -157,7 +153,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                     await _context.SaveChangesAsync();
                     _logger.LogInformation("OTP đã được tạo trong database: {OtpCode}", otpCode);
 
-                    // Gửi email OTP
+                    
                     _logger.LogInformation("Bắt đầu gửi email OTP tới {Email}", request.Email);
                     var emailSent = await _emailService.SendOtpEmailAsync(request.Email, otpCode, request.FullName);
                     
@@ -167,7 +163,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                         throw new Exception("Không thể gửi email xác thực");
                     }
 
-                    // Commit transaction nếu tất cả thành công
+                    
                     await transaction.CommitAsync();
                     _logger.LogInformation("✅ Transaction commit thành công - User và OTP đã được tạo, email đã gửi");
                     
@@ -175,7 +171,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                 }
                 catch (Exception transactionEx)
                 {
-                    // Rollback transaction nếu có lỗi
+                    
                     await transaction.RollbackAsync();
                     _logger.LogError(transactionEx, "❌ Transaction rollback - Lỗi trong quá trình tạo user hoặc gửi OTP: {Message}", transactionEx.Message);
                     return (false, $"Không thể hoàn thành đăng ký: {transactionEx.Message}. Vui lòng thử lại.");
@@ -190,16 +186,12 @@ namespace Traffic_Violation_Reporting_Management_System.Service
 
 
 
-        /// <summary>
-        /// Xác thực OTP và kích hoạt tài khoản
-        /// </summary>
-        /// <param name="request">Thông tin OTP</param>
-        /// <returns>True nếu thành công</returns>
+      
         public async Task<(bool Success, string Message)> VerifyOtpAsync(VerifyOtpRequest request)
         {
             try
             {
-                // Tìm OTP hợp lệ
+                
                 var otp = await _context.Otps
                     .Where(o => o.Email == request.Email.ToLower() 
                                && o.Otpcode == request.OtpCode
@@ -212,10 +204,10 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                     return (false, "Mã OTP không hợp lệ hoặc đã hết hạn");
                 }
 
-                // Đánh dấu OTP đã sử dụng
+                
                 otp.IsUsed = true;
 
-                // Kích hoạt tài khoản user
+              
                 var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
 
@@ -227,7 +219,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                 user.IsActive = true;
                 await _context.SaveChangesAsync();
 
-                // Gửi email chào mừng
+                
                 await _emailService.SendWelcomeEmailAsync(user.Email, user.FullName);
 
                 return (true, "Xác thực thành công! Tài khoản đã được kích hoạt.");
@@ -240,18 +232,12 @@ namespace Traffic_Violation_Reporting_Management_System.Service
 
 
 
-        /// <summary>
-        /// Gửi OTP để reset password
-        /// </summary>
-        /// <param name="request">Thông tin forgot password</param>
-        /// <returns>True nếu thành công</returns>
         public async Task<(bool Success, string Message)> ForgotPasswordAsync(ForgotPasswordRequest request)
         {
             try
             {
                 _logger.LogInformation("Bắt đầu xử lý forgot password cho email: {Email}", request.Email);
-                
-                // Kiểm tra email có tồn tại và đã active chưa
+               
                 var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower() && u.IsActive == true);
 
@@ -260,7 +246,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                     return (false, "Email không tồn tại hoặc tài khoản chưa được kích hoạt");
                 }
 
-                // Xóa các OTP cũ của email này
+                
                 var oldOtps = await _context.Otps
                     .Where(o => o.Email == request.Email.ToLower())
                     .ToListAsync();
@@ -271,17 +257,17 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                     _context.Otps.RemoveRange(oldOtps);
                 }
 
-                // Tạo OTP mới
+                
                 var otpCode = GenerateOtpCode();
                 _logger.LogInformation("Đã tạo OTP code cho forgot password: {OtpCode} cho {Email}", otpCode, request.Email);
                 
                 var otp = new Otp
                 {
                     Email = request.Email.ToLower(),
-                    PhoneNumber = "", // Để trống vì không dùng
+                    PhoneNumber = "", 
                     Otpcode = otpCode,
                     CreatedAt = DateTime.Now,
-                    ExpiresAt = DateTime.Now.AddMinutes(10), // Hiệu lực 10 phút
+                    ExpiresAt = DateTime.Now.AddMinutes(10), 
                     IsUsed = false
                 };
 
@@ -289,7 +275,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Đã lưu OTP forgot password vào database cho {Email}", request.Email);
 
-                // Gửi email với OTP
+               
                 var emailSent = await _emailService.SendForgotPasswordOtpEmailAsync(request.Email, otpCode, user.FullName);
                 
                 if (!emailSent)
@@ -308,18 +294,14 @@ namespace Traffic_Violation_Reporting_Management_System.Service
             }
         }
 
-        /// <summary>
-        /// Reset password với OTP
-        /// </summary>
-        /// <param name="request">Thông tin reset password</param>
-        /// <returns>True nếu thành công</returns>
+        
         public async Task<(bool Success, string Message)> ResetPasswordAsync(ResetPasswordRequest request)
         {
             try
             {
                 _logger.LogInformation("Bắt đầu reset password cho email: {Email}", request.Email);
                 
-                // Tìm OTP hợp lệ
+                
                 var otp = await _context.Otps
                     .Where(o => o.Email == request.Email.ToLower() 
                                && o.Otpcode == request.OtpCode
@@ -332,7 +314,7 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                     return (false, "Mã OTP không hợp lệ hoặc đã hết hạn");
                 }
 
-                // Tìm user để reset password
+                
                 var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower() && u.IsActive == true);
 
@@ -341,11 +323,11 @@ namespace Traffic_Violation_Reporting_Management_System.Service
                     return (false, "Không tìm thấy tài khoản");
                 }
 
-                // Đánh dấu OTP đã sử dụng
+               
                 otp.IsUsed = true;
 
-                // Cập nhật password mới
-                user.Password = request.NewPassword; // Không hash theo yêu cầu
+                
+                user.Password = request.NewPassword; 
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("✅ Reset password thành công cho {Email}", request.Email);
@@ -359,38 +341,32 @@ namespace Traffic_Violation_Reporting_Management_System.Service
             }
         }
 
-        /// <summary>
-        /// Kiểm tra CCCD có tồn tại không
-        /// </summary>
-        /// <param name="cccd">Số CCCD</param>
-        /// <returns>True nếu tồn tại</returns>
+        
         public async Task<bool> CccdExistsAsync(string cccd)
         {
             return await _context.Users
                 .AnyAsync(u => u.Cccd == cccd);
         }
 
-        /// <summary>
-        /// Kiểm tra số điện thoại có tồn tại không
-        /// </summary>
-        /// <param name="phoneNumber">Số điện thoại</param>
-        /// <returns>True nếu tồn tại</returns>
+       
         public async Task<bool> PhoneExistsAsync(string phoneNumber)
         {
             return await _context.Users
                 .AnyAsync(u => u.PhoneNumber == phoneNumber);
         }
 
-        /// <summary>
-        /// Tạo mã OTP 6 số ngẫu nhiên
-        /// </summary>
-        /// <returns>Mã OTP</returns>
+       
         private string GenerateOtpCode()
         {
             var random = new Random();
             return random.Next(100000, 999999).ToString();
         }
 
+        /// <summary>
+        /// Vì k có bảng role nên a tạo tạm 3 role này nhé
+        /// </summary>
+        /// <param name="roleId"></param>
+        /// <returns></returns>
         private string GetRoleName(int roleId)
         {
             return roleId switch
